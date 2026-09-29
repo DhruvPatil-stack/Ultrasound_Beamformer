@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python load_data.py)",
-      "Bash(python beamform.py)",
-      "Bash(python visualize.py)"
-    ]
-  }
-}
