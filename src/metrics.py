@@ -2,19 +2,28 @@
 import numpy as np
 
 
+def _parabolic_coordinate(coord, values, index):
+    if index == 0 or index == len(values) - 1:
+        return float(coord[index])
+    left, center, right = values[index - 1:index + 2]
+    denominator = left - 2 * center + right
+    offset = 0.5 * (left - right) / denominator if denominator != 0 else 0.0
+    return float(coord[index] + offset * (coord[index + 1] - coord[index]))
+
+
 def point_position_error(image, x_grid, z_grid, target_x, target_z, lateral_window=2e-3, axial_window=1e-3):
     x_mask = np.abs(x_grid - target_x) <= lateral_window
     z_mask = np.abs(z_grid - target_z) <= axial_window
     local = image[np.ix_(z_mask, x_mask)]
     local_peak = np.unravel_index(np.argmax(local), local.shape)
     peak = (np.flatnonzero(z_mask)[local_peak[0]], np.flatnonzero(x_mask)[local_peak[1]])
-    lateral = abs(x_grid[peak[1]] - target_x) * 1e3
-    axial = abs(z_grid[peak[0]] - target_z) * 1e3
-    return {"lateral_mm": float(lateral), "axial_mm": float(axial)}
+    estimated_x = _parabolic_coordinate(x_grid, image[peak[0]], peak[1])
+    estimated_z = _parabolic_coordinate(z_grid, image[:, peak[1]], peak[0])
+    return {"lateral_mm": float(abs(estimated_x - target_x) * 1e3), "axial_mm": float(abs(estimated_z - target_z) * 1e3), "estimated_x_mm": estimated_x * 1e3, "estimated_z_mm": estimated_z * 1e3}
 
 
 def _crossing(coord, values, peak_index, side):
-    threshold = values[peak_index] / np.sqrt(2.0)
+    threshold = values[peak_index] / 2.0
     indices = range(peak_index, 0, -1) if side == "left" else range(peak_index, len(values) - 1)
     for i in indices:
         j = i - 1 if side == "left" else i + 1
@@ -30,6 +39,14 @@ def fwhm(coord, values):
     return float((right - left) * 1e3) if np.isfinite(left + right) else float("nan")
 
 
+def _first_null(values, peak, direction):
+    indices = range(peak - 1, 0, -1) if direction == "left" else range(peak + 1, len(values) - 1)
+    for index in indices:
+        if values[index] <= values[index - 1] and values[index] <= values[index + 1]:
+            return index
+    return 0 if direction == "left" else len(values) - 1
+
+
 def point_resolution(image, x_grid, z_grid, target_x, target_z):
     x_mask = np.abs(x_grid - target_x) <= 2e-3
     z_mask = np.abs(z_grid - target_z) <= 1e-3
@@ -40,9 +57,14 @@ def point_resolution(image, x_grid, z_grid, target_x, target_z):
     axial = image[:, xi]
     width = fwhm(x_grid, lateral)
     peak = lateral[xi]
-    mask = np.abs(x_grid - x_grid[xi]) > 1.5 * width * 1e-3 if np.isfinite(width) else np.zeros_like(x_grid, bool)
-    psl = 20 * np.log10(np.max(lateral[mask]) / peak) if np.any(mask) and peak > 0 else float("nan")
-    return {"lateral_fwhm_mm": width, "axial_fwhm_mm": fwhm(z_grid, axial), "psl_db": float(psl)}
+    inside = np.abs(x_grid - x_grid[xi]) <= 1.5 * width * 1e-3 if np.isfinite(width) else np.zeros_like(x_grid, bool)
+    outside = ~inside
+    islr = 10 * np.log10(np.sum(lateral[outside] ** 2) / np.sum(lateral[inside] ** 2)) if np.any(outside) else float("nan")
+    left_null, right_null = _first_null(lateral, xi, "left"), _first_null(lateral, xi, "right")
+    null_outside = np.ones_like(lateral, dtype=bool)
+    null_outside[left_null:right_null + 1] = False
+    psl = 20 * np.log10(np.max(lateral[null_outside]) / peak) if np.any(null_outside) and peak > 0 else float("nan")
+    return {"lateral_fwhm_mm": width, "axial_fwhm_mm": fwhm(z_grid, axial), "islr_db": float(islr), "psl_db": float(psl), "first_nulls_mm": [float(x_grid[left_null] * 1e3), float(x_grid[right_null] * 1e3)]}
 
 
 def cyst_metrics(image, x_grid, z_grid, radius=4e-3, center=(0.0, 30e-3)):
