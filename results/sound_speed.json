@@ -1,13 +1,16 @@
 {
   "1500": {
+    "predicted_axial_shift_mm": -0.7795584415584418,
     "axial_shift_mm": -0.752999215347554,
-    "lateral_fwhm_mm": 1.6467809033268475
+    "lateral_fwhm_mm": 1.6467809033268472
   },
   "1540": {
+    "predicted_axial_shift_mm": 0.0,
     "axial_shift_mm": 0.0007226253477625733,
     "lateral_fwhm_mm": 0.311632559869219
   },
   "1580": {
+    "predicted_axial_shift_mm": 0.7795584415584418,
     "axial_shift_mm": 0.7749690553175981,
     "lateral_fwhm_mm": 1.5657174531415012
   }

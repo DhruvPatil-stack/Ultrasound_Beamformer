@@ -4,3 +4,11 @@ __pycache__/
 .pytest_cache/
 *.hdf5
 data/
+error.log
+*.log
+results_quick/
+figures_quick/
+.verify/
+.venv/
+patches_in/
+beamformer_*/

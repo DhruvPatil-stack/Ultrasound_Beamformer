@@ -76,3 +76,11 @@ def cyst_metrics(image, x_grid, z_grid, radius=4e-3, center=(0.0, 30e-3)):
     cr = 20 * np.log10(mu_out / mu_in) if mu_in > 0 else float("inf")
     cnr = abs(mu_in - mu_out) / np.sqrt(np.var(inside) + np.var(outside))
     return {"cr_db": float(cr), "cnr": float(cnr)}
+
+
+def shallow_clutter_db(image, x_grid, z_grid):
+    """Measure the specified shallow off-axis patch relative to the image peak."""
+    x, z = np.meshgrid(x_grid, z_grid)
+    patch = image[(z >= 8e-3) & (z <= 14e-3) & (np.abs(x) >= 14e-3) & (np.abs(x) <= 19e-3)]
+    peak = np.max(image)
+    return float(20 * np.log10(np.mean(patch) / peak)) if len(patch) and peak > 0 else float("nan")

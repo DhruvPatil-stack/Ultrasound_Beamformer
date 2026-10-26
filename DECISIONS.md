@@ -1,48 +1,32 @@
-# Decisions and task list
+# Release decisions and task list
 
-## Timing-correction task list
+## Release task list
 
-- [x] Phase 1: Replace rounded RF placement with exact-delay pulse evaluation.
-- [x] Phase 2: Use off-grid points and parabolic peak estimation.
-- [x] Phase 3: Measure -6 dB FWHM, full-cut ISLR, first-null PSL, and five-seed cyst metrics.
-- [x] Phase 4: Measure sound-speed mismatch robustness.
-- [x] Phase 5: Regenerate results and documentation.
-- [x] Phase 6: Commit and push the timing correction.
+- [x] Phase 0: Inspect the repository, run baseline checks, and verify identity and branch refs.
+- [x] Phase 1: Remove private report details, repair cleanup and dependency files, add ignore rules and MIT license.
+- [x] Phase 2: Add and run the isolated quick cyst demo; confirm release outputs remain unchanged.
+- [x] Phase 3: Generate measured findings and theoretical limits from recorded result files.
+- [x] Phase 4: Add automated checks, continuous integration, and public quick-start documentation.
+- [x] Phase 5: Review, consolidate local history, and prepare exact push commands.
 
-- [x] Phase 0: Read the original project and Git history.
-- [x] Phase 1: Create the package layout and remove obsolete data and figures.
-- [x] Phase 2: Add a deterministic local simulator.
-- [x] Phase 3: Add chunked analytic DAS with interpolation, apodization, and F-number support.
-- [x] Phase 4: Add B-mode conversion and measurement functions.
-- [x] Phase 5: Run and record tests.
-- [x] Phase 6: Run the demo and create measured results and figures.
-- [x] Phase 7: Write documentation from generated results.
-- [x] Phase 8: Commit and push.
+## Decisions
 
-## Technical choices
+- Preserve recorded full-demo measurements. Do not rerun the full demo or change test tolerances.
+- The quick demo measures cyst configurations C and G with seeds 0 and 1. It writes only to `results_quick/` and `figures_quick/`.
+- The quick demo ran once on 2026-10-26. Its internal runtime was 223.58051340002567 seconds; the enclosing command measured 225.6104 seconds. Both are under five minutes. SHA-256 checks confirmed that `results/`, `figures/`, and `README.md` did not change.
+- Render README measurement values from `results/ablation.csv`, `results/sound_speed.json`, and `results/runtime.json`. Label equations and derived bounds as theory.
+- Keep `BLOCKED.md` local and uncommitted. It records a denied optional process-monitoring query and a documentation command that succeeded on one retry.
+- Never store the full-demo or quick-demo output directories in Git. Keep the user’s existing `error.log` uncommitted.
 
-- The simulator uses a Gaussian-modulated cosine pulse. Its Gaussian width is derived from the requested 0.6 fractional bandwidth; attenuation and element directivity are not simulated.
-- The cyst speckle count is estimated from 10 scatterers per wavelength-by-axial-resolution cell over a 20 mm by 20 mm cyst region. Scatterers are generated in chunks of 4096 to bound temporary arrays below 1 GB.
-- The analytic RF signal has about 4 samples per cycle at 5.2 MHz (20.832 MHz / 5.2 MHz). Linear interpolation is therefore evaluated, not assumed superior.
-- Test tolerances: point position limits are 0.2 mm lateral and 0.1 mm axial, as specified. Resolution is allowed +/-40% of lambda x F-number, as specified. The hand delay comparison uses exact binary-equivalent arithmetic from the same constants.
-- No parameters are adjusted after observing a test result. Measured values are appended below after the test and demo runs.
-- Point metrics use a local search window around each known simulated target. This prevents a stronger point elsewhere in the seven-point phantom from being incorrectly assigned to the target under test. Resolution is measured on a separate 0.025 mm lateral and axial local grid around the 30 mm point.
+## Current beamforming choices
 
-## Measured validation record
+- The simulator uses a Gaussian-modulated cosine pulse and deterministic seeded scatterers. Attenuation, element directivity, depth-gain compensation, and tissue motion are not modeled.
+- DAS computes analytic channel data, applies nearest or linear delay interpolation, and supports optional Hann weighting, F-number aperture, and polyphase upsampling.
+- Plane-wave steering uses a shared nonnegative transmit-time offset. Coherent compounding averages complex DAS images before envelope detection.
+- `beamform_das` defaults to linear interpolation, Hann weighting, and no F-number aperture.
+- Point position is estimated by a three-sample parabolic peak fit. Resolution uses -6 dB FWHM. Cyst results in the release files use seeds 0 through 4 and sample standard deviation.
+- The steering implementation is evaluated through the range represented by config G. README theory calculations exclude scanner overhead and are not measured frame rates.
 
-- [x] Phase 5: `pytest -q` reported 6 passed and 0 failed.
-- [x] Phase 6: `run_demo.py` generated the ablation files and five figures.
-- [x] Phase 7: Documentation uses values written by `results/ablation.csv`.
-- The no-apodization, no-F-number configuration A measured a lateral FWHM of 0.145566789059316 mm at 30 mm. Lambda x F-number was 0.2331920048455482 mm, giving a measured ratio of 0.6242357629530667.
-- Linear interpolation (B) was worse than nearest interpolation (A) for lateral FWHM in this simulator result, but it improved cyst CR and CNR. This is reported rather than hidden.
-
-## Timing-correction decisions
-
-- The simulator now evaluates `p(n / fs - tau)` at the exact delay. It uses integer sample indices only to select the finite three-sigma pulse support.
-- The off-grid point is at 0.037 mm lateral and 30.013 mm axial. Parabolic interpolation uses the three samples centered on the local maximum.
-- FWHM is now measured at -6 dB, or half of the envelope peak. This replaced the prior -3 dB definition.
-- ISLR integrates squared amplitude outside 1.5 FWHM over the full lateral cut. PSL is the maximum amplitude outside the first local minimum on each side of the peak; those minima define the main-lobe null interval.
-- Cyst metrics use five fixed seeds, 0 through 4. Their reported standard deviations use sample standard deviation with `ddof=1`.
-- The resolution test keeps its specified +/-40% interval around lambda x F-number. The new A ratio is 1.324005671321293. The old A FWHM was 0.145566789059316 mm; the new -6 dB A FWHM is 0.3088813275216213 mm.
-- Position tests retain the specified 0.2 mm lateral and 0.1 mm axial limits. They passed before this record was written; no tolerance was changed.
-- Sound-speed robustness uses the same simulated RF at 1540 m/s. Physics predicts a lower assumed speed will place the target shallow and a higher assumed speed will place it deep.
+The eight commits after `5ae053f` were consolidated into one local release
+commit. No push was performed. Publishing the rewritten branch requires the
+force-with-lease command supplied in the handoff.

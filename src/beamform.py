@@ -3,16 +3,27 @@ import numpy as np
 from scipy.signal import hilbert, resample_poly
 
 
-def compute_tof(x, z, elem_x, c):
-    """Return 0-degree plane-wave transmit plus receive delays."""
+LATERAL_LIMIT = 20e-3
+
+
+def transmit_time_offset(angle, c, lateral_limit=LATERAL_LIMIT):
+    """Return the offset that makes the bounded plane-wave transmit time nonnegative."""
+    return abs(np.sin(np.deg2rad(angle))) * lateral_limit / c
+
+
+def compute_tof(x, z, elem_x, c, angle=0.0, time_offset=None):
+    """Return plane-wave transmit plus receive delays."""
     x = np.asarray(x)[..., None]
     z = np.asarray(z)[..., None]
-    return (z + np.sqrt((x - np.asarray(elem_x)) ** 2 + z ** 2)) / c
+    if time_offset is None:
+        time_offset = transmit_time_offset(angle, c)
+    theta = np.deg2rad(angle)
+    return (x * np.sin(theta) + z * np.cos(theta) + np.sqrt((x - np.asarray(elem_x)) ** 2 + z ** 2)) / c + time_offset
 
 
 def beamform_das(rf, c, fs, pitch, x_grid, z_grid, interp="linear", apod="hann",
-                 fnum=1.5, upsample=1, row_chunk=16):
-    """Beamform analytic RF; transmit time offset is zero, while real data can need one."""
+                 fnum=None, upsample=1, row_chunk=16, angle=0.0, return_complex=False):
+    """Beamform analytic RF with the simulator's plane-wave time reference."""
     if interp not in {"nearest", "linear"} or apod not in {"none", "hann"}:
         raise ValueError("interp must be nearest/linear and apod must be none/hann")
     if fnum is not None and fnum <= 0:
@@ -20,16 +31,16 @@ def beamform_das(rf, c, fs, pitch, x_grid, z_grid, interp="linear", apod="hann",
     analytic = hilbert(rf, axis=0)
     effective_fs = fs
     if upsample > 1:
-        analytic = resample_poly(analytic, upsample, axis=0)
+        analytic = resample_poly(analytic, upsample, 1, axis=0)
         effective_fs *= upsample
     n_samples, n_elements = analytic.shape
     elem_x = (np.arange(n_elements) - (n_elements - 1) / 2) * pitch
-    output = np.zeros((len(z_grid), len(x_grid)), dtype=float)
+    output = np.zeros((len(z_grid), len(x_grid)), dtype=complex)
     channels = np.arange(n_elements)[None, None, :]
     for start in range(0, len(z_grid), row_chunk):
         z = z_grid[start:start + row_chunk, None]
         x = x_grid[None, :]
-        tof = compute_tof(x, z, elem_x, c)
+        tof = compute_tof(x, z, elem_x, c, angle=angle)
         sample = tof * effective_fs
         lower = np.floor(sample).astype(int)
         valid = (lower >= 0) & (lower < n_samples)
@@ -57,5 +68,5 @@ def beamform_das(rf, c, fs, pitch, x_grid, z_grid, interp="linear", apod="hann",
         weights *= valid
         denominator = weights.sum(axis=2)
         summed = (gathered * weights).sum(axis=2)
-        output[start:start + len(z)] = np.abs(np.divide(summed, denominator, out=np.zeros_like(summed), where=denominator > 0))
-    return output
+        output[start:start + len(z)] = np.divide(summed, denominator, out=np.zeros_like(summed), where=denominator > 0)
+    return output if return_complex else np.abs(output)

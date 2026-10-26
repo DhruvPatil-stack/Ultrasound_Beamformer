@@ -1,6 +1,8 @@
 """Deterministic plane-wave RF channel simulator."""
 import numpy as np
 
+from src.beamform import transmit_time_offset
+
 C = 1540.0
 FS = 20.832e6
 PITCH = 0.3e-3
@@ -20,8 +22,8 @@ def _pulse(fs, f0, fractional_bandwidth):
 
 def simulate_channels(scatterers, amplitudes, c=C, fs=FS, pitch=PITCH,
                       n_elements=128, f0=F0, fractional_bandwidth=FRACTIONAL_BANDWIDTH,
-                      max_depth=65e-3, chunk_size=4096):
-    """Simulate 0-degree plane-wave channels with a transmit time offset of zero."""
+                      max_depth=65e-3, chunk_size=4096, angle=0.0):
+    """Simulate plane-wave channels with a shared nonnegative transmit-time reference."""
     scatterers = np.asarray(scatterers, dtype=float)
     amplitudes = np.asarray(amplitudes, dtype=float)
     if scatterers.ndim != 2 or scatterers.shape[1] != 2 or len(scatterers) != len(amplitudes):
@@ -29,7 +31,8 @@ def simulate_channels(scatterers, amplitudes, c=C, fs=FS, pitch=PITCH,
     pulse_t, _ = _pulse(fs, f0, fractional_bandwidth)
     sigma = np.max(np.abs(pulse_t)) / 3.0
     support = int(np.ceil(3 * sigma * fs)) + 1
-    n_samples = int(np.ceil(2 * max_depth / c * fs)) + 2 * support + 2
+    offset = transmit_time_offset(angle, c)
+    n_samples = int(np.ceil((2 * max_depth / c + offset) * fs)) + 2 * support + 2
     rf = np.zeros((n_samples, n_elements), dtype=np.float64)
     elem_x = element_positions(n_elements, pitch)
     offsets = np.arange(-support, support + 1)
@@ -37,7 +40,8 @@ def simulate_channels(scatterers, amplitudes, c=C, fs=FS, pitch=PITCH,
         points = scatterers[first:first + chunk_size]
         amp = amplitudes[first:first + chunk_size]
         distance = np.sqrt((points[:, None, 0] - elem_x[None, :]) ** 2 + points[:, None, 1] ** 2)
-        tau = (points[:, None, 1] + distance) / c
+        theta = np.deg2rad(angle)
+        tau = (points[:, None, 0] * np.sin(theta) + points[:, None, 1] * np.cos(theta) + distance) / c + offset
         centers = np.floor(tau * fs).astype(int)
         samples = centers[:, :, None] + offsets[None, None, :]
         valid = (samples >= 0) & (samples < n_samples)
