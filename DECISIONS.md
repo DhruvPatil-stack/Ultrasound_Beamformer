@@ -5,10 +5,10 @@
 - [x] Phase 2: Add a deterministic local simulator.
 - [x] Phase 3: Add chunked analytic DAS with interpolation, apodization, and F-number support.
 - [x] Phase 4: Add B-mode conversion and measurement functions.
-- [ ] Phase 5: Run and record tests.
-- [ ] Phase 6: Run the demo and create measured results and figures.
-- [ ] Phase 7: Write documentation from generated results.
-- [ ] Phase 8: Commit and push.
+- [x] Phase 5: Run and record tests.
+- [x] Phase 6: Run the demo and create measured results and figures.
+- [x] Phase 7: Write documentation from generated results.
+- [x] Phase 8: Commit and push.
 
 ## Technical choices
 
