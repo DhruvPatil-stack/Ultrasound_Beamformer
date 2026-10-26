@@ -1,5 +1,14 @@
 # Decisions and task list
 
+## Timing-correction task list
+
+- [x] Phase 1: Replace rounded RF placement with exact-delay pulse evaluation.
+- [x] Phase 2: Use off-grid points and parabolic peak estimation.
+- [x] Phase 3: Measure -6 dB FWHM, full-cut ISLR, first-null PSL, and five-seed cyst metrics.
+- [x] Phase 4: Measure sound-speed mismatch robustness.
+- [x] Phase 5: Regenerate results and documentation.
+- [x] Phase 6: Commit and push the timing correction.
+
 - [x] Phase 0: Read the original project and Git history.
 - [x] Phase 1: Create the package layout and remove obsolete data and figures.
 - [x] Phase 2: Add a deterministic local simulator.
@@ -26,3 +35,14 @@
 - [x] Phase 7: Documentation uses values written by `results/ablation.csv`.
 - The no-apodization, no-F-number configuration A measured a lateral FWHM of 0.145566789059316 mm at 30 mm. Lambda x F-number was 0.2331920048455482 mm, giving a measured ratio of 0.6242357629530667.
 - Linear interpolation (B) was worse than nearest interpolation (A) for lateral FWHM in this simulator result, but it improved cyst CR and CNR. This is reported rather than hidden.
+
+## Timing-correction decisions
+
+- The simulator now evaluates `p(n / fs - tau)` at the exact delay. It uses integer sample indices only to select the finite three-sigma pulse support.
+- The off-grid point is at 0.037 mm lateral and 30.013 mm axial. Parabolic interpolation uses the three samples centered on the local maximum.
+- FWHM is now measured at -6 dB, or half of the envelope peak. This replaced the prior -3 dB definition.
+- ISLR integrates squared amplitude outside 1.5 FWHM over the full lateral cut. PSL is the maximum amplitude outside the first local minimum on each side of the peak; those minima define the main-lobe null interval.
+- Cyst metrics use five fixed seeds, 0 through 4. Their reported standard deviations use sample standard deviation with `ddof=1`.
+- The resolution test keeps its specified +/-40% interval around lambda x F-number. The new A ratio is 1.324005671321293. The old A FWHM was 0.145566789059316 mm; the new -6 dB A FWHM is 0.3088813275216213 mm.
+- Position tests retain the specified 0.2 mm lateral and 0.1 mm axial limits. They passed before this record was written; no tolerance was changed.
+- Sound-speed robustness uses the same simulated RF at 1540 m/s. Physics predicts a lower assumed speed will place the target shallow and a higher assumed speed will place it deep.
