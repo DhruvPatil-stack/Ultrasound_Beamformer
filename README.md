@@ -1,28 +1,62 @@
-Ultrasound Delay-and-Sum (DAS) Beamforming Engine
-A lightweight, fully vectorized Python pipeline that reconstructs a standard 2D B-Mode clinical ultrasound image from raw synthetic radiofrequency (RF) channel data.
-I built this rapid proof-of-concept to demonstrate hands-on application of acoustic physics, RF channel processing, and beamforming algorithms using standard Python biosignal workflows.
+# Ultrasound DAS Beamformer
 
-Pipeline Architecture
-Data Ingestion: Extracts raw voltage matrices, sampling frequencies, and transducer element pitch from an HDF5 dataset.
+This project is a delay-and-sum beamformer validated on deterministic simulated data.
+It is a student project. It is not a medical device.
 
-Vectorized Time-of-Flight: Calculates geometric transmit/receive delays across a 100x200 spatial grid for a 128-element linear array, utilizing NumPy broadcasting to bypass standard nested loops for rapid execution.
+The local simulator produces point targets and a speckle phantom with an anechoic cyst.
+The beamformer forms an analytic channel signal before it sums delayed channels.
+Parameters are similar to published plane-wave research settings. No PICMUS data is used.
 
-Delay-and-Sum (DAS): Converts time delays to matrix indices, aligns the staggered channel data, and sums across the 128-element axis to force constructive interference at the focal coordinates.
+## Run
 
-Envelope Detection: Applies a Hilbert transform to extract the low-frequency acoustic intensity envelope from the high-frequency RF carrier wave.
+```text
+python -m pip install -r requirements.txt
+pytest -q
+python run_demo.py
+```
 
-Log Compression: Compresses the massive acoustic dynamic range into decibels (dB), clipped between -60 and 0 dB, to render the final grayscale B-Mode image.
+The demo creates `results/ablation.csv`, `results/metrics.json`, and the figures below.
 
-Visual Outputs
-Raw RF Signal (Center Transducer)
+![Point-phantom channel data](figures/channel_data.png)
 
-Reconstructed B-Mode Image
+![Point phantom B-mode image](figures/points_bmode.png)
 
-Tech Stack
-NumPy: Matrix manipulation, broadcasting, and time-delay calculations.
+![Cyst phantom B-mode image](figures/cyst_bmode.png)
 
-SciPy: DSP applications (Hilbert transform).
+![Ablation comparison](figures/ablation_panel.png)
 
-h5py: Ingestion of standard medical imaging datasets.
+## Results
 
-Matplotlib: Clinical image rendering and dynamic range mapping.
+The table is written by `run_demo.py` from `results/ablation.csv`.
+
+<!-- RESULTS:START -->
+| Config | Lateral FWHM (mm) | PSL (dB) | CR (dB) | CNR |
+|---|---:|---:|---:|---:|
+| legacy | 0.2043 | -14.54 | 7.95 | 1.003 |
+| A | 0.1456 | -14.76 | 7.90 | 1.006 |
+| B | 0.2101 | -16.16 | 10.44 | 1.197 |
+| C | 0.3408 | -20.61 | 10.20 | 1.206 |
+| D | 0.6461 | -15.00 | 10.63 | 1.273 |
+<!-- RESULTS:END -->
+
+See [the measured CSV](results/ablation.csv) and [the full metrics](results/metrics.json).
+
+## Limitations
+
+- Simulated data only.
+- One plane wave at normal incidence.
+- No attenuation.
+- No element directivity.
+- No speed-of-sound error.
+- No depth gain compensation.
+- No transmit time offset.
+- Not tested on real data.
+<!-- RESULTS:START -->
+| Config | Lateral FWHM (mm) | PSL (dB) | CR (dB) | CNR |
+|---|---:|---:|---:|---:|
+| legacy | 0.2043 | -14.54 | 7.95 | 1.003 |
+| A | 0.1456 | -14.76 | 7.90 | 1.006 |
+| B | 0.2101 | -16.16 | 10.44 | 1.197 |
+| C | 0.3408 | -20.61 | 10.20 | 1.206 |
+| D | 0.6461 | -15.00 | 10.63 | 1.273 |
+<!-- RESULTS:END -->

@@ -1,2 +1,6 @@
 .claude/
 envelope.npy
+__pycache__/
+.pytest_cache/
+*.hdf5
+data/
